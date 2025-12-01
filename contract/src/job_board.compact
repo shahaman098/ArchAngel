@@ -1,0 +1,129 @@
+namespace JobBoard;
+
+use std::bytes::Bytes32;
+use std::collections::{Map, List};
+use std::zk::{Proof, verify};
+
+type JobId = u64;
+type Hash = Bytes32;
+
+struct PublicInputs {
+  requiredThreshold: u32
+}
+
+circuit SkillCircuit(
+  private skillScore: u32,
+  public requiredThreshold: u32
+);
+
+type ZkProof = Proof<SkillCircuit>;
+
+struct Job {
+  id: JobId,
+  employer: Address,
+  requiredSkillThreshold: u32,
+  descriptionHash: Hash,
+  createdAt: u64
+}
+
+struct Application {
+  jobId: JobId,
+  applicantIdHash: Hash,
+  accepted: bool,
+  appliedAt: u64
+}
+
+state nextJobId: JobId = 0u64;
+state jobs: Map<JobId, Job>;
+state applications: Map<JobId, List<Application>>;
+
+event JobPosted(jobId: JobId, employer: Address, requiredSkillThreshold: u32);
+
+event ApplicationEvaluated(jobId: JobId, applicantIdHash: Hash, accepted: bool);
+
+impure circuit SkillCircuit(
+  private skillScore: u32,
+  public requiredThreshold: u32
+) {
+  assert(skillScore >= requiredThreshold);
+}
+
+// ---------------------------------------------------------------------
+// Public Methods
+// ---------------------------------------------------------------------
+
+// 1. postJob(requiredSkillThreshold: u32, descriptionHash: Hash)
+//    - Assign new jobId = nextJobId
+//    - Increment nextJobId
+//    - Store job
+//    - Emit JobPosted
+fn postJob(requiredSkillThreshold: u32, descriptionHash: Hash) {
+  let jobId = nextJobId;
+  nextJobId = nextJobId + 1u64;
+
+  let job = Job {
+    id: jobId,
+    employer: tx.sender,
+    requiredSkillThreshold,
+    descriptionHash,
+    createdAt: tx.timestamp
+  };
+
+  jobs.insert(jobId, job);
+
+  emit JobPosted(jobId, tx.sender, requiredSkillThreshold);
+}
+
+// 2. apply(jobId: JobId, applicantIdHash: Hash, proof: ZkProof, publicInputs: PublicInputs)
+//    - Retrieve job
+//    - Extract job.requiredSkillThreshold
+//    - CALL ZK VERIFIER → enforce: private skillScore >= public requiredSkillThreshold
+//    - If proof valid → accepted = true
+//    - Else → accepted = false
+//    - Store Application(jobId, applicantIdHash, accepted, timestamp)
+//    - Emit ApplicationEvaluated
+fn apply(jobId: JobId, applicantIdHash: Hash, proof: ZkProof, publicInputs: PublicInputs) {
+  let jobOpt = jobs.get(jobId);
+  assert(jobOpt.is_some(), "Job does not exist");
+
+  let job = jobOpt.unwrap();
+
+  assert(publicInputs.requiredThreshold == job.requiredSkillThreshold);
+
+  let isValid = verify(proof, publicInputs);
+
+  let accepted = isValid;
+
+  let application = Application {
+    jobId,
+    applicantIdHash,
+    accepted,
+    appliedAt: tx.timestamp
+  };
+
+  let existing = applications.get(jobId).unwrap_or(List::new());
+  let updated = existing.push(application);
+  applications.insert(jobId, updated);
+
+  emit ApplicationEvaluated(jobId, applicantIdHash, accepted);
+}
+
+// 3. getJob(jobId: JobId) → Job
+fn getJob(jobId: JobId) -> Job {
+  let jobOpt = jobs.get(jobId);
+  assert(jobOpt.is_some(), "Job does not exist");
+  return jobOpt.unwrap();
+}
+
+// 4. listJobs() → List<Job>
+fn listJobs() -> List<Job> {
+  return jobs.values();
+}
+
+// 5. getApplications(jobId: JobId) → List<Application>
+fn getApplications(jobId: JobId) -> List<Application> {
+  return applications.get(jobId).unwrap_or(List::new());
+}
+
+
+
