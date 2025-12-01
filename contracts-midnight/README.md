@@ -6,7 +6,7 @@ The contract lets:
 
 - **Employers** post job listings with a required skill threshold.
 - **Applicants** submit applications.
-- A **zero-knowledge circuit** proves that an applicant's private `skillScore` meets the public `requiredSkillThreshold` without revealing the score.
+- A **zero-knowledge circuit** proves that an applicant’s private `skillScore` meets the public `requiredSkillThreshold` without revealing the score.
 
 The contract and circuit live in `contract/src/job_board.compact`.
 
@@ -89,4 +89,5 @@ All commands are run from `contracts-midnight`:
 
 The TypeScript scripts currently use simple stub Midnight client types so you can focus on the Compact contract and ZK flow first. Replace the stubs with the real Midnight SDK client and managed contract bindings when you are ready to connect to the live testnet.
 
-For detailed deployment and integration instructions, see [BLOCKCHAIN_README.md](./BLOCKCHAIN_README.md).
+
+

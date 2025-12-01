@@ -1,0 +1,19 @@
+{
+  "name": "contracts-midnight",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build:contract": "compact compile contract/src/job_board.compact contract/managed/job_board",
+    "smoke": "ts-node scripts/smoke-test.ts",
+    "test:apply": "ts-node scripts/test-apply.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "dotenv": "^16.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.0"
+  }
+}
+
+
+
